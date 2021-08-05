@@ -46,8 +46,18 @@ function setup() {
 
   socket.on("updateLocation", handleUpdateLocation);
   socket.on("newTail", handleNewTail);
+  socket.on("updateTailLocation", handleUpdateTailLocation)
 
   // HINT: add handlers for all other message types that you need to send to other players
+}
+
+function handleUpdateTailLocation(data) {
+  let currentSnake = Snakes.get(data.id);
+  currentSnake.tail = [];
+  for (let tailSegment of data.tail) {
+    currentSnake.tail.push(new TailSegment(tailSegment.x, tailSegment.y, currentSnake.color))
+  }
+  
 }
 function handleUpdateLocation(data) {
   Snakes.get(data.id).x = data.x;
@@ -67,8 +77,10 @@ function handleDirectionChange(data) {
 }
 
 function handleNewTail(data) {
-  Snakes.get(data.id).extendTail;
+  let currentSnake = Snakes.get(data.id);
+  currentSnake.tail.push(new TailSegment(data.tailX, data.tailY, currentSnake.color));
 }
+
 function handleCollisions(data) {
   Snakes.get(data.id).isAlive = false;
   Snakes.get(data.id).speed = 0;
@@ -78,12 +90,14 @@ function handleStartGame(data) {
   print(data);
   let newPlayerData = data.newPlayer;
   playerSnake = new Snake(
+    //id, size, x, y, direction, speed, color
     newPlayerData.id,
     newPlayerData.size,
     newPlayerData.x,
     newPlayerData.y,
     newPlayerData.direction,
-    newPlayerData.speed
+    newPlayerData.speed,
+    newPlayerData.color
   );
 
   for (let otherPlayer of data.otherPlayers) {
@@ -93,7 +107,8 @@ function handleStartGame(data) {
       otherPlayer.x,
       otherPlayer.y,
       otherPlayer.direction,
-      otherPlayer.speed
+      otherPlayer.speed,
+      otherPlayer.color
     );
     Snakes.set(createdSnake.id, createdSnake);
   }
@@ -101,12 +116,14 @@ function handleStartGame(data) {
 
 function handlePlayerAdded(newPlayerData) {
   let newSnake = new Snake(
+    //(id, size, x, y, direction, speed, colorValue
     newPlayerData.id,
     newPlayerData.size,
     newPlayerData.x,
     newPlayerData.y,
     newPlayerData.direction,
-    newPlayerData.speed
+    newPlayerData.speed,
+    newPlayerData.color
   );
   Snakes.set(newSnake.id, newSnake);
 }
@@ -155,13 +172,13 @@ function displayScore() {
 }
 
 class Snake {
-  constructor(id, size, x, y, direction, speed) {
+  constructor(id, size, x, y, direction, speed, colorValue) {
     this.size = size;
     this.x = x;
     this.y = y;
     this.direction = direction;
     this.speed = speed;
-    this.color = color(random(0, 360), 100, 100);
+    this.color = color("hsb("+ colorValue + ")") //color(random(0, 360), 100, 100);
     this.tail = [new TailSegment(this.x, this.y, this.color)];
     this.isAlive = true;
     this.id = id;
@@ -195,13 +212,19 @@ class Snake {
         y: this.y
       };
       socket.emit("updateLocation", location);
+      
+      let tailLocation = {
+        id: this.id,
+        tail: this.tail
+      }
+      socket.emit("updateTailLocation", tailLocation)
     }
   }
 
   showSelf() {
     stroke(this.color);
-    fill(this.color);
-    tint(this.color);
+    fill(color(this.color));
+    tint(color(this.color));
     image(
       this.snakeHead,
       this.x - this.size,

@@ -37,7 +37,6 @@ io.sockets.on("connection", newConnection);
 
 // this will hold a list of players, keyed by their connection ID
 let players = new Map();
-
 // let apple = new Apple();
 
 function newConnection(playerConnection) {
@@ -98,9 +97,9 @@ function newConnection(playerConnection) {
 
   function handleUpdateLocation(data) {
     //console.log("Array is: " + Array.from(players.keys()) + " looking for: " + data.id);
-    console.log(data);
-    console.log(data.id);
-    console.log(players.keys());
+    // console.log(data);
+    // console.log(data.id);
+    // console.log(players.keys());
     players.get(data.id).x = data.x;
     players.get(data.id).y = data.y;
     playerConnection.broadcast.emit("updateLocation", players.get(data.id));
@@ -109,7 +108,15 @@ function newConnection(playerConnection) {
   playerConnection.on("newTail", handleNewTail)
   
   function handleNewTail(data) {
-    playerConnection.broadcast.emit("newTail", players.get(data.id))
+    playerConnection.broadcast.emit("newTail", data)
+    
+  }
+  
+  playerConnection.on("updateTailLocation", handleUpdateTail)
+  
+  function handleUpdateTail(data) {
+    playerConnection.broadcast.emit("updateTailLocation", data)
+    //players.get(data.id).tail.push(data.tailX, data.tailY)
   }
   
 //   playerConnection.on("collideApple", handleAppleCollision)
@@ -144,6 +151,7 @@ class Player {
     }];
     this.isAlive = true;
     this.id = id;
+    this.color = getRandomInt(0, 360) + ", 70%, 100%"
   }
 }
 
@@ -153,4 +161,10 @@ class Apple {
     this.y = Math.random*(390)
     this.size = 10;
   }
+}
+
+function getRandomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
 }
