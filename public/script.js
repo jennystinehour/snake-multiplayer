@@ -64,13 +64,11 @@ function addApple(data){
 function handleAppleCollision(data){
   console.log("Removing Apple: " + data.id)
   Apples.delete(data.id);
-  
 }
 
 function handleUpdateLocation(data) {
   Snakes.get(data.id).x = data.x;
   Snakes.get(data.id).y = data.y;
-  
 }
 
 function handleUpdateTailLocation(data) {

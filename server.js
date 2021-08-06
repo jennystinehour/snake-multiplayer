@@ -38,16 +38,18 @@ io.sockets.on("connection", newConnection);
 // this will hold a list of players, keyed by their connection ID
 let players = new Map();
 
+let bounds = 800;
+
 class Apple {
   constructor() {
-    this.x = Math.random()*390
-    this.y = Math.random()*390
+    this.x = Math.random()*(bounds-10)
+    this.y = Math.random()*(bounds-10)
     this.size = 10;
   }
   
   resetPosition(){
-    this.x = Math.random()*390
-    this.y = Math.random()*390
+    this.x = Math.random()*(bounds-10)
+    this.y = Math.random()*(bounds-10)
   }
 }
 
@@ -90,8 +92,8 @@ function newConnection(playerConnection) {
   // assign the new player its ID and starting position
   let newPlayer = new Player(
     10,
-    Math.floor(Math.random() * 400),
-    Math.floor(Math.random() * 400),
+    Math.floor(Math.random() * bounds),
+    Math.floor(Math.random() * bounds),
     "N", // do you want them all to start in the same direction?
     10,
     1,  // populate this with the real data necessary for a tail segment
@@ -138,8 +140,8 @@ function newConnection(playerConnection) {
   
   function handleAppleCollision(data){
     console.log(data);
-    apples.delete(data.id);
-    let oldId = data.id;
+    apples.delete(data.id); //We delete the old apple we ate
+    let oldId = data.id; //We take our old ID
     appleId++;
     playerConnection.broadcast.emit("collideApple", data);
   }
