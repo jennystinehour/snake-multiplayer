@@ -28,27 +28,49 @@ function preload() {
 }
 function setup() {
   // Canvas & color settings
-  createCanvas(400, 400);
+  createCanvas(800, 800);
   colorMode(HSB, 360, 100, 100);
   backgroundColor = 95;
   frameRate(12);
-  Apples = [new Apple()];
+  Apples = new Map();
   score = 0;
   Snakes = new Map();
   deadApples = [];
 
-  socket = io.connect("https://slither-update-tails.glitch.me");
+  socket = io.connect("https://snake-w-friends.glitch.me");
   socket.on("startGameEvent", handleStartGame);
   socket.on("playerAdded", handlePlayerAdded);
   socket.on("disconnectedPlayer", handlePlayerRemoved);
   socket.on("changeDirection", handleDirectionChange);
   socket.on("getCollision", handleCollisions);
+  socket.on("collideApple", handleAppleCollision);
+  socket.on("addNewApple", addApple);
 
   socket.on("updateLocation", handleUpdateLocation);
   socket.on("newTail", handleNewTail);
   socket.on("updateTailLocation", handleUpdateTailLocation)
 
   // HINT: add handlers for all other message types that you need to send to other players
+  
+  socket.emit("addNewApple");
+}
+
+function addApple(data){
+  console.log("New Apple: " + data.appleId)
+  Apples.set(data.appleId, new Apple(data.appleId, data.apple.x, data.apple.y))
+}
+
+
+function handleAppleCollision(data){
+  console.log("Removing Apple: " + data.id)
+  Apples.delete(data.id);
+  
+}
+
+function handleUpdateLocation(data) {
+  Snakes.get(data.id).x = data.x;
+  Snakes.get(data.id).y = data.y;
+  
 }
 
 function handleUpdateTailLocation(data) {
@@ -58,10 +80,6 @@ function handleUpdateTailLocation(data) {
     currentSnake.tail.push(new TailSegment(tailSegment.x, tailSegment.y, currentSnake.color))
   }
   
-}
-function handleUpdateLocation(data) {
-  Snakes.get(data.id).x = data.x;
-  Snakes.get(data.id).y = data.y;
 }
 function handleDirectionChange(data) {
   Snakes.get(data.id).direction = data.direction;
@@ -80,17 +98,16 @@ function handleNewTail(data) {
   let currentSnake = Snakes.get(data.id);
   currentSnake.tail.push(new TailSegment(data.tailX, data.tailY, currentSnake.color));
 }
-
 function handleCollisions(data) {
   Snakes.get(data.id).isAlive = false;
   Snakes.get(data.id).speed = 0;
+  
 }
 
 function handleStartGame(data) {
   print(data);
   let newPlayerData = data.newPlayer;
   playerSnake = new Snake(
-    //id, size, x, y, direction, speed, color
     newPlayerData.id,
     newPlayerData.size,
     newPlayerData.x,
@@ -116,7 +133,6 @@ function handleStartGame(data) {
 
 function handlePlayerAdded(newPlayerData) {
   let newSnake = new Snake(
-    //(id, size, x, y, direction, speed, colorValue
     newPlayerData.id,
     newPlayerData.size,
     newPlayerData.x,
@@ -133,11 +149,13 @@ function handlePlayerRemoved(removedPlayerId) {
 }
 
 function draw() {
-  //console.log(Snakes);
   background(backgroundColor);
   if (playerSnake) {
     playerSnake.moveSelf();
-    playerSnake.showSelf();
+    if (playerSnake.isAlive == true){
+      playerSnake.showSelf();
+    }
+    
     // playerSnake.checkCollisions();
     playerSnake.checkPlayerCollisions();
     playerSnake.checkApples();
@@ -146,15 +164,17 @@ function draw() {
   // The snake performs the following four methods:
   for (let snake of Snakes.values()) {
     //snake.moveSelf();
-    snake.showSelf();
+    if (snake.isAlive == true){
+      snake.showSelf();
+    }
+    
     // snake.checkCollisions();
     // snake.checkPlayerCollisions();
     // snake.checkApples();
   }
-
+  
   // The apple needs fewer methods to show up on screen.
-  for (let i = 0; i < Apples.length; i++) {
-    let apple = Apples[i];
+  for (let apple of Apples.values()) {
     apple.showSelf();
   }
   // We put the score in its own function for readability.
@@ -223,8 +243,8 @@ class Snake {
 
   showSelf() {
     stroke(this.color);
-    fill(color(this.color));
-    tint(color(this.color));
+    fill(this.color);
+    tint(this.color);
     image(
       this.snakeHead,
       this.x - this.size,
@@ -234,15 +254,15 @@ class Snake {
     );
     //rect(this.x, this.y, this.size, this.size);
     //noStroke();
-    for (let i = 0; i < this.tail.length; i++) {
+    for (let i = 1; i < this.tail.length; i++) {
       this.tail[i].showSelf();
     }
   }
 
   checkApples() {
     // If the head of the snake collides with the apple...
-    for (let i = 0; i < Apples.length; i++) {
-      currentApple = Apples[i];
+    for (let appleId of Apples.keys()) {
+      let currentApple = Apples.get(appleId);
       let hit = collideRectRect(
         this.x,
         this.y,
@@ -253,7 +273,6 @@ class Snake {
         currentApple.size,
         currentApple.size
       );
-      // console.log(hit)
       if (
         collideRectRect(
           this.x,
@@ -268,8 +287,10 @@ class Snake {
       ) {
         // Make a new apple, increment the score, and extend the tail.
         score += 1;
-        Apples.unshift(new Apple());
-        Apples.pop();
+        Apples.delete(appleId)
+        let collisionData = {id: appleId}
+        socket.emit("collideApple", collisionData);
+        socket.emit("addNewApple");
         this.extendTail();
       }
     }
@@ -310,7 +331,8 @@ class Snake {
         ) {
           //deadApples.unshift(new DeadApple(this.x, this.y))
           this.speed = 0;
-          this.isAlive = false;         
+          this.isAlive = false;
+          this.color = color(0,0,0,0)
 
           let collisionData = {
             deadSnakeId: this.id
@@ -359,10 +381,11 @@ class TailSegment {
 }
 
 class Apple {
-  constructor() {
-    this.x = round(random(width - 10));
-    this.y = round(random(height - 10));
+  constructor(id, x, y) {
+    this.x = x;
+    this.y = y;
     this.size = 10;
+    this.id = id;
   }
 
   showSelf() {

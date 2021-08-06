@@ -37,7 +37,25 @@ io.sockets.on("connection", newConnection);
 
 // this will hold a list of players, keyed by their connection ID
 let players = new Map();
-// let apple = new Apple();
+
+class Apple {
+  constructor() {
+    this.x = Math.random()*390
+    this.y = Math.random()*390
+    this.size = 10;
+  }
+  
+  resetPosition(){
+    this.x = Math.random()*390
+    this.y = Math.random()*390
+  }
+}
+
+
+let appleId = 1;
+
+let apples = new Map();
+
 
 function newConnection(playerConnection) {
   playerConnection.on("disconnect", handleDisconnect);
@@ -94,12 +112,11 @@ function newConnection(playerConnection) {
   playerConnection.broadcast.emit("playerAdded", newPlayer);
   
   playerConnection.on("updateLocation", handleUpdateLocation);
+  playerConnection.on("collideApple", handleAppleCollision)
+  
 
   function handleUpdateLocation(data) {
     //console.log("Array is: " + Array.from(players.keys()) + " looking for: " + data.id);
-    // console.log(data);
-    // console.log(data.id);
-    // console.log(players.keys());
     players.get(data.id).x = data.x;
     players.get(data.id).y = data.y;
     playerConnection.broadcast.emit("updateLocation", players.get(data.id));
@@ -115,24 +132,31 @@ function newConnection(playerConnection) {
   playerConnection.on("updateTailLocation", handleUpdateTail)
   
   function handleUpdateTail(data) {
-    playerConnection.broadcast.emit("updateTailLocation", data)
-    //players.get(data.id).tail.push(data.tailX, data.tailY)
+    playerConnection.broadcast.emit("updateTailLocation", data); 
+   
   }
   
-//   playerConnection.on("collideApple", handleAppleCollision)
+  function handleAppleCollision(data){
+    console.log(data);
+    apples.delete(data.id);
+    let oldId = data.id;
+    appleId++;
+    playerConnection.broadcast.emit("collideApple", data);
+  }
   
-//   function handleAppleCollision(data){
-    
-//   }
+  playerConnection.on("addNewApple", addNewApple)
   
-//   playerConnection.on("changeDirection", handleChangeDirection)
+  function addNewApple() {
+    let appleData = {appleId: appleId, apple: new Apple()}
+    apples.set(appleId, appleData.apple)
+    console.log("Hello")
+    console.log(apples);
+    io.sockets.emit("addNewApple", appleData);
+  }
   
-//   function handleChangeDirection(data) {
-//     players.get(data.id).direction = data.direction
-//     playerConnection.broadcast.emit("changeDirection", players.get(data.id));
-//    }
+  io.sockets.emit("addNewApple", {appleId: appleId, apple: apples.get(appleId)});
   
-  
+
   
 }
 
@@ -152,14 +176,6 @@ class Player {
     this.isAlive = true;
     this.id = id;
     this.color = getRandomInt(0, 360) + ", 70%, 100%"
-  }
-}
-
-class Apple {
-  constructor() {
-    this.x = Math.random*(390)
-    this.y = Math.random*(390)
-    this.size = 10;
   }
 }
 
